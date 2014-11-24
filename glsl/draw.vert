@@ -4,9 +4,26 @@ precision mediump float;
 uniform sampler2D state;
 attribute float index;
 
+#define DIM 1024.0
+
+vec2 getLoc(float index)
+{
+	float y = floor(index * 4.0 / DIM);
+	float x = index * 4.0 - y * DIM;
+
+	return vec2(x ,y )/DIM;
+}
+
+vec4 shift(vec4 pos)
+{
+	return 2.0*(pos - vec4(0.5));
+}
+
 void main() {
-	float x = texture2D(state, vec2(0.0,0.0)).r;
-	float y = index/10.0;
-    gl_Position = vec4(x,y, 0.0,1.0);
-	gl_PointSize = 10.0;
+	float texSize = 1.0/DIM;
+
+	vec3 pos = texture2D(state, getLoc(index)).rgb;
+	
+    gl_Position = shift(vec4(pos,1.0));
+	gl_PointSize = 15.0;
 }

@@ -1,3 +1,6 @@
+var NUM_PARTICLES = 5000;
+var DIM = 1024;
+
 function ParticleSim(canvas, scale) {
     var igloo = this.igloo = new Igloo(canvas);
 
@@ -35,15 +38,53 @@ function ParticleSim(canvas, scale) {
 
     // this.setRandom();
     //initialization
+    this.initTextures();
     this.initBuffers();
 }
 
+// init texture
+ParticleSim.prototype.initTextures = function () {
+    var pos = new Uint8Array(DIM * DIM * 4);
+    /*
+    for (var x = 0; x < DIM * DIM * 4 ; x++) {
+        pos[x] = 128;
+    }*/
+    
+    for (var x = 0; x < NUM_PARTICLES * 4 * 4; x += 16) {
+
+            pos[x] = Math.random() * 255.0;
+            pos[x + 1] = Math.random() * 105.0 + 150.0;
+            pos[x + 2] = 0.0;
+            pos[x + 3] = 255.0;
+           
+            var angle = Math.random() * 2.0 * 180.0;
+            pos[x + 4] = Math.random()  * 255.0;
+            pos[x + 5] = Math.random() * 255.0; //Math.sin(angle) * 255.0;
+            pos[x + 6] = 0.5 * 255.0;
+            pos[x + 7] = 255.0;
+
+            pos[x + 8] = 0.5;
+            pos[x + 9] = 0.5;
+            pos[x + 10] = 0.5;
+            pos[x + 11] = 255.0;
+
+            pos[x + 12] = 0.5;
+            pos[x + 13] = 0.5;
+            pos[x + 14] = 0.5;
+            pos[x + 15] = 255.0;
+
+
+    }
+    this.textures.previous.set(pos, DIM, DIM);
+    this.textures.current.blank(DIM, DIM);
+    return this;
+};
 // Init index buffer for each particle
 ParticleSim.prototype.initBuffers = function () {
     var w = this.resolution[0], h = this.resolution[1],
         gl = this.igloo.gl,
 
-        indexes = new Float32Array(10);
+        indexes = new Float32Array(NUM_PARTICLES);
 
     /*for (var y = 0; y < th; y++) {
         for (var x = 0; x < tw; x++) {
@@ -52,7 +93,7 @@ ParticleSim.prototype.initBuffers = function () {
             indexes[i + 1] = y;
         }
     }*/
-    for (var x = 0; x < 10; x++) {
+    for (var x = 0; x < NUM_PARTICLES; x++) {
         indexes[x] = x;
     }
     this.buffers.indexes.update(indexes, gl.STATIC_DRAW);
@@ -101,7 +142,7 @@ ParticleSim.prototype.draw = function () {
         .attrib('index', this.buffers.indexes, 1)
         .uniformi('state', 0)
         .uniform('scale', this.resolution)
-        .draw(gl.POINTS,10);
+        .draw(gl.POINTS,NUM_PARTICLES);
     return this;
 };
 
