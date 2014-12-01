@@ -25,5 +25,5 @@ void main() {
 	vec3 pos = texture2D(state, getLoc(index)).rgb;
 	
     gl_Position = shift(vec4(pos,1.0));
-	gl_PointSize = 15.0;
+	gl_PointSize = 15.0 * (1.0 - pos.z);
 }
