@@ -31,6 +31,7 @@ upVector[0] = 0.0;
 upVector[1] = 1.0;
 upVector[2] = 0.0;
 upVector[3] = 1.0;
+var userSelectedZ = 0.0;
 
 function ParticleSim(canvas, scale) {
     var igloo = this.igloo = new Igloo(canvas);
@@ -97,6 +98,8 @@ ParticleSim.prototype.initTextures = function () {
     
     for (var x = 0; x < NUM_PARTICLES * 4 * 4; x += 16) {
             
+
+
             //position
             pos[x] = Math.random() * 105.0 + 60.0;
             pos[x + 1] = Math.random() * 20.0 + 235.0;
@@ -109,13 +112,13 @@ ParticleSim.prototype.initTextures = function () {
             pos[x + 6] = 0.5 * 255.0;
             pos[x + 7] = 255.0;
             
-            //
+            //position2
             pos[x + 8] = 0.5;
             pos[x + 9] = 0.5;
             pos[x + 10] = 0.5;
             pos[x + 11] = 255.0;
             
-            //
+            //velocity2
             pos[x + 12] = 0.5;
             pos[x + 13] = 0.5;
             pos[x + 14] = 0.5;
@@ -455,7 +458,7 @@ var mesh;
 var simControl = function () {
     this.startCol = [255, 0, 0, 1];
     this.endCol = [0, 0, 255, 1];
-    this.radius = 0.1;
+    this.sphereZpos = 0.0;
     this.numParticles = 200;
     this.objCollision = true;
 
@@ -470,11 +473,12 @@ $(document).ready(function () {
 
     var gui = new dat.GUI();
 
-    gui.add(simController, 'radius').onChange(function () {
+    gui.add(simController, 'sphereZpos').onChange(function () {
         //radius = simControl.radius;
         //InitSphere();
        // simProg.initObstacleTex();
        // console.log("CHANGED RADIUS");
+      userSelectedZ = simController.sphereZpos; 
 
     });
     gui.add(simController, 'numParticles').min(1).max(50000).step(200).onChange(function () {
@@ -488,14 +492,14 @@ $(document).ready(function () {
     gui.addColor(simController, 'startCol').onChange(function () {
         for (var i = 0; i < 4; ++i) {
             startColor[i] = simController.startCol[i] / 255.0;
-            startColor[i][3] = 1.0;
+            //startColor[i][3] = 1.0;
         }
     });
 
     gui.addColor(simController, 'endCol').onChange(function () {
         for (var i = 0; i < 4; ++i) {
             endColor[i] = simController.endCol[i] / 255.0;
-            endColor[i][3] = 1.0;
+            //endColor[i][3] = 1.0;
         }
     });
 
@@ -633,7 +637,7 @@ ParticleSim.prototype.click = function (x, y, state) {
     //console.log(x + " " + y);
 
     var newPos = vec4.create();
-    newPos = [(x-0.5)*2.0, (y-0.5)*2.0, 0.0, 1.0];
+    newPos = [(x-0.5)*2.0, (y-0.5)*2.0, userSelectedZ, 1.0];
 
     AddObstacle(newPos);
     obstaclePos.push(newPos);

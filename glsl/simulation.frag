@@ -227,7 +227,7 @@ void main() {
 		
 		
 
-        newValue = vec4(clamp(newValue.xyz, vec3(0.4),vec3(0.6)),1.0);
+        //newValue = vec4(clamp(newValue.xyz, vec3(0.4),vec3(0.6)),1.0);
 	}
 
 	//if color
