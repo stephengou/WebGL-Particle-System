@@ -4,7 +4,7 @@ By Zhen Gou, Zhenghan Mei
 ##Overview
 This is a particle system developed using WebGL which has the following major features: simulation in fragment shader, collision handling with obstacles, user editable obstacles, deferred shading, velocity based motion blur.
 
-[Demo] (gouzhen1.github.io/WebGL-Particle-System)
+[Demo] (https://gouzhen1.github.io/WebGL-Particle-System)
 
 if your browser cannot run it, here is a video demo
 
