@@ -57,7 +57,9 @@ collision detection is done when a fragment is updating the velocity state of a 
 
 In this way, we discretized our space into DimX * DimY grids, and before our simulation begins, our program will loop through obstacles (both primitives and OBJ mesh) to generate the levelset.
 
-Using this way of collision detection, we sacrificed loading speed but greatly accelerated run-time collision detection, O(1) to be precise.
+Using this way of collision detection, we sacrificed loading speed but greatly accelerated run-time collision detection, O(1) to be precise. 
+
+Detailed analysis of the 2 different approach can be found in performance analysis.
 
 * Collision handling: 
 
@@ -86,14 +88,11 @@ with noise
 
 -  	vertex shader (draw.vert): reads the position of the particle given the index, set glPosition to the particle position and set glPointSize appropriately.
 
--  	fragment shader (display.frag) : 
+-  	fragment shader (display.frag) : set color according to particle state
 
-?
-
-Performance analysis
-1.	performance v.s number of particles
-![]
-
-
-
-Alpha Demo: gouzhen1.github.io/WebGL-Particle-System
+###Performance analysis
+obstacle state loop v.s levelset
+![] (table1.jpg)
+![] (table2.jpg)
+![] (table3.jpg)
+![] (table4.jpg)
