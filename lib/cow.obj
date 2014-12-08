@@ -1,15 +1,3 @@
-﻿<html>
-  <head>
-    <title>WebGL Particle System</title>
-    <meta charset="utf-8"/>
-    <script src="lib/igloo.js"></script>
-    <script src="lib/stats.min.js"></script>
-    <script src="lib/jquery-2.1.1.min.js"></script>
-    <script src="lib/gl-matrix.js"></script>
-    <script src="lib/dat.gui.min.js"></script>
-    <script src="js/Particle.js"></script>
-    <script src="lib/webgl-obj-loader.js"></script>
-    <script type="text/plain" id="mesh.obj">
 # This file uses centimeters as units for non-parametric coordinates.
 
 mtllib cow.mtl
@@ -27816,13 +27804,3 @@ f 4579//17401 4580//17402 4576//17403
 f 4576//17404 4580//17405 4577//17406
 f 4569//17407 4581//17408 4570//17409
 f 4582//17410 4583//17411 4570//17412
-
-
-     </script>
-  </head>
-  <body>
-    <h1>WebGL Particle System</h1>
-
-    <canvas id="particleSim" width="1024" height="1024"></canvas>
-  </body>
-</html>

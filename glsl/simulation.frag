@@ -7,6 +7,7 @@ precision mediump float;
 #define dT 0.07
 uniform sampler2D state;
 uniform sampler2D obstacleState;
+uniform sampler2D obstacleLevelset;
 uniform vec2 scale;
 uniform float seed;
 uniform float nSphere;
@@ -169,7 +170,35 @@ void main() {
 		vec3 spherePos;
 		float sphereR;
 
-		for(float i = 0.0; i < DIM; i++)
+		
+		
+		//New Collision system
+		spherePos = texture2D(obstacleLevelset,oldPos.xy).xyz;
+		sphereR = texture2D(obstacleLevelset,oldPos.xy).w;
+
+		if(sphereR< 0.001 || length(oldPos.xyz - spherePos) > sphereR) newValue = oldVel +  vec4(dT *vec3(0.000,-0.05,0.000),1.0);
+		else
+		{
+
+			vec3 sphereNorm = normalize(oldPos.xyz - spherePos);
+			sphereNorm.x += 0.5 * snoise(vec3(seed * gl_FragCoord.y));
+			sphereNorm.y += 0.5 * snoise(vec3(seed * gl_FragCoord.x));
+			sphereNorm.z += 0.5 * snoise(vec3(seed * gl_FragCoord.z));
+			sphereNorm = normalize(sphereNorm);
+		
+
+			vec3 ref = -normalize(reflect(normalize(oldVel.xyz),sphereNorm));
+			if(dot(ref,sphereNorm)<0.0001) ref = normalize(ref + sphereNorm);
+		
+			float randResistance = (snoise(gl_FragCoord.xyz) + 1.0) * 0.06;
+			float resistance = randResistance + 0.035;
+			newValue = shiftBack(vec4(ref * length(oldVel) *resistance, 1.0)) +  vec4(dT *vec3(0.000,-0.05,0.000),1.0);
+			
+		}
+		
+		
+		//Old Collision system
+		/*for(float i = 0.0; i < DIM; i++)
 		{
 		    sphereState = texture2D(obstacleState, vec2(0.0,i/DIM));
 			spherePos = sphereState.xyz;
@@ -194,8 +223,10 @@ void main() {
 				break;
 			}
 			else newValue = oldVel +  vec4(dT *vec3(0.000,-0.05,0.000),1.0);
-		}
+		}*/
 		
+		
+
         newValue = vec4(clamp(newValue.xyz, vec3(0.4),vec3(0.6)),1.0);
 	}
 

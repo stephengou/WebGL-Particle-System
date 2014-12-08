@@ -3,6 +3,7 @@ precision mediump float;
 #endif
 uniform sampler2D state;
 attribute float index;
+uniform mat4 camera;
 
 #define DIM 1024.0
 
@@ -23,7 +24,7 @@ void main() {
 	float texSize = 1.0/DIM;
 
 	vec3 pos = texture2D(state, getLoc(index)).rgb;
-	
-    gl_Position = shift(vec4(pos,1.0));
-	gl_PointSize = 15.0 * (1.0 - pos.z);
+	vec4 newPos = camera* shift(vec4(pos,1.0));
+    gl_Position = newPos;
+	gl_PointSize = 2.0 * (0.5 *newPos.z + 0.5);
 }

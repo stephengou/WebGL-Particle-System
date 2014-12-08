@@ -1,5 +1,5 @@
-var NUM_PARTICLES =50000;
-var DIM = 1024;
+var NUM_PARTICLES =250000;
+var DIM = 1024.0;
 
 // sphere initializations
 var spheres = [];
@@ -9,17 +9,28 @@ var textureCoordData = [];
 var indexData = [];
 var latitudeBands = 30;
 var longitudeBands = 30;
-var radius = 0.2;
+var radius = 0.09;
 var sphereVBO;
 var normalVBO;
 var seed = 0.0;
-
+var usingOBJ = true;
+var meshOBJ = [];
+var meshOBJnormal = [];
+var maxX = -999.0, maxY = -999.0, maxZ = -999.0, minX = 999.0, minY = 999.0, minZ = 999.0;
 //particle property
 var startColor = [0.0,0.0,1.0,1.0];
 var endColor = [1.0,1.0,1.0,1.0];
 
 var MVP = []; 
 var obstaclePos = [];
+var rotationMatrix = mat4.create();
+var persp = mat4.create();
+mat4.perspective(persp, 60.0/180.0*Math.PI, DIM/DIM, 0.1, 2000);
+var upVector = vec4.create();
+upVector[0] = 0.0;
+upVector[1] = 1.0;
+upVector[2] = 0.0;
+upVector[3] = 1.0;
 
 function ParticleSim(canvas, scale) {
     var igloo = this.igloo = new Igloo(canvas);
@@ -43,12 +54,15 @@ function ParticleSim(canvas, scale) {
     this.buffers = {
         quad: igloo.array(Igloo.QUAD2),
         indexes: igloo.array(),
+
     };
 
     this.obstacleBuffer =
     {
         spherePos: igloo.array(sphereVBO),
-        sphereNorm: igloo.array(normalVBO)
+        sphereNorm: igloo.array(normalVBO),
+        meshPos: igloo.array(meshOBJ),
+        meshNorm: igloo.array(meshOBJnormal)
     }
 
     //create 2 buffers to swap
@@ -57,7 +71,8 @@ function ParticleSim(canvas, scale) {
             .blank(this.resolution[0], this.resolution[1]),
         current: igloo.texture(null, gl.RGBA, gl.REPEAT, gl.NEAREST)
             .blank(this.resolution[0], this.resolution[1]),
-        obstacleTex: igloo.texture(null, gl.RGBA, gl.REPEAT, gl.NEAREST).blank(1,1024)
+        obstacleTex: igloo.texture(null, gl.RGBA, gl.REPEAT, gl.NEAREST).blank(1, 1024),
+        levelsetTex: igloo.texture(null, gl.RGBA, gl.REPEAT, gl.NEAREST).blank(1024, 1024)
     };
 
     this.framebuffers = {
@@ -69,6 +84,7 @@ function ParticleSim(canvas, scale) {
     this.initTextures();
     this.initBuffers();
     this.initObstacleTex();
+    this.initLevelsetTex();
 }
 
 // init texture
@@ -82,13 +98,13 @@ ParticleSim.prototype.initTextures = function () {
     for (var x = 0; x < NUM_PARTICLES * 4 * 4; x += 16) {
             
             //position
-            pos[x] = Math.random() * 255.0;
+            pos[x] = Math.random() * 105.0 + 60.0;
             pos[x + 1] = Math.random() * 20.0 + 235.0;
-            pos[x + 2] = 0.5 * 255.0;
+            pos[x + 2] = Math.random() * 105.0 + 60.0;
             pos[x + 3] = 255.0;
         
             //velocity
-            pos[x + 4] = Math.random() * 40 + 0.5 * 255.0 - 20.0;
+            pos[x + 4] = 0.5 * 255.0;
             pos[x + 5] = Math.random() * 20.0 + 98.0;//Math.sin(angle) * 255.0;
             pos[x + 6] = 0.5 * 255.0;
             pos[x + 7] = 255.0;
@@ -113,12 +129,13 @@ ParticleSim.prototype.initTextures = function () {
 };
 
 //init obstacle tex
-ParticleSim.prototype.initObstacleTex = function ()
-{
-    MVP = [];
-    obstaclePos = [];
-
+ParticleSim.prototype.initObstacleTex = function () {
+    //MVP = [];
+   // obstaclePos = [];
     var pos = new Uint8Array(1024 * 4);
+/*    console.log("called initObstacle");
+
+
     var zero = vec4.create();
     zero = [0.0, 0.0, 0.0, 1.0];
 
@@ -136,27 +153,88 @@ ParticleSim.prototype.initObstacleTex = function ()
     obstaclePos.push(zero);
 
     var trans2 = vec4.create();
-    trans2 = [0.0, -0.5, 0.0,1.0];
+    trans2 = [0.0, -0.5, 0.0, 1.0];
 
     AddObstacle(trans2);
     //vec4.transformMat4(trans2, trans2, MVP[2]);
     obstaclePos.push(trans2);
 
+    */
 
-
-    //obstaclePos.push([-0.2, 0.0, 0.0]);
-   //  obstaclePos.push([0.0, 0.0, 0.0]);
-    
-    for (var x = 0; x < obstaclePos.length ; x++)
-    {
+    for (var x = 0; x < obstaclePos.length ; x++) {
         pos[4 * x] = (0.5 * obstaclePos[x][0] + 0.5) * 255.0;
         pos[4 * x + 1] = (0.5 * obstaclePos[x][1] + 0.5) * 255.0;
         pos[4 * x + 2] = (0.5 * obstaclePos[x][2] + 0.5) * 255.0;
-        pos[4*x + 3] = 0.55 * radius * 255.0;
+        pos[4 * x + 3] = 0.55 * radius * 255.0;
     }
-    this.textures.obstacleTex.set(pos,1,1024);
+    this.textures.obstacleTex.set(pos, 1, 1024);
     return this;
-}
+};
+
+//generate obstacle level set
+ParticleSim.prototype.initLevelsetTex = function () {
+
+    var pos = new Uint8Array(1024 * 1024 * 4);
+    //console.log("called initLevelset");
+    //for each pixel
+    for (var x = 0; x < 1024 * 1024 ; x++) {
+    
+
+        var collideSphere = vec4.create();
+        collideSphere[0] = 0.0;
+        collideSphere[1] = 0.0;
+        collideSphere[2] = 0.0;
+        collideSphere[3] = 0.0;
+
+
+        //pos in world
+        var selfPos = vec3.create();
+        selfPos[0] = (x % DIM) / 1024.0;
+        selfPos[1] = (x / DIM) / 1024.0;
+        selfPos[2] = 0.5;
+
+        //bounding box for obj
+        if (usingOBJ)
+        {
+            if (selfPos[0] > (0.5 * maxX + 0.5) || selfPos[1] > (0.5 * maxY + 0.5) || selfPos[0] < (0.5 * minX + 0.5) || selfPos[1] < (0.5 * minY + 0.5))
+            {
+                //if (x % 1000 == 0)console.log(x);
+                pos[4 * x] = collideSphere[0] * 255.0;
+                pos[4 * x + 1] = collideSphere[1] * 255.0;
+                pos[4 * x + 2] = collideSphere[2] * 255.0;
+                pos[4 * x + 3] = 0.55 * collideSphere[3] * 255.0;
+                continue;
+            } 
+        }
+
+        //for each obstacle
+        for (var y = 0; y < obstaclePos.length; y++) {
+
+            var sphereCenter = vec3.create();
+
+            sphereCenter[0] = (0.5 * obstaclePos[y][0] + 0.5);
+            sphereCenter[1] = (0.5 * obstaclePos[y][1] + 0.5);
+            sphereCenter[2] = (0.5 * obstaclePos[y][2] + 0.5);
+            selfPos[2] = sphereCenter[2];
+
+            if (vec3.distance(selfPos, sphereCenter) < 0.6 *radius) {
+                //console.log("collided");
+                collideSphere[0] = sphereCenter[0];
+                collideSphere[1] = sphereCenter[1];
+                collideSphere[2] = sphereCenter[2];
+                collideSphere[3] = radius;
+                break;
+            }
+        }
+        //if (x % 1000 == 0)console.log(x);
+        pos[4 * x] = collideSphere[0] * 255.0;
+        pos[4 * x + 1] = collideSphere[1] * 255.0;
+        pos[4 * x + 2] = collideSphere[2] * 255.0;
+        pos[4 * x + 3] = 0.55 * collideSphere[3] * 255.0;
+    }
+    this.textures.levelsetTex.set(pos, 1024, 1024);
+    return this;
+};
 // Init index buffer for each particle
 ParticleSim.prototype.initBuffers = function () {
     var w = this.resolution[0], h = this.resolution[1],
@@ -188,12 +266,14 @@ ParticleSim.prototype.update = function () {
 
     this.textures.previous.bind(0);
     this.textures.obstacleTex.bind(1);
+    this.textures.levelsetTex.bind(2);
 
     gl.viewport(0, 0, this.resolution[0], this.resolution[1]);
     this.programs.sim.use()
         .attrib('quad', this.buffers.quad, 2)
         .uniformi('state', 0)
         .uniformi('obstacleState', 1)
+        .uniformi('obstacleLevelset',2)
         .uniform('seed',seed)
         .uniform('scale', this.resolution)
         .uniform('nSphere', MVP.length)
@@ -215,14 +295,41 @@ ParticleSim.prototype.draw = function () {
     this.textures.previous.bind(0);
     gl.viewport(0, 0, this.resolution[0], this.resolution[1]);
 
+    var cam = mat4.create();
+    var camTrans = mat4.create();
+    var camPos = vec4.create();
+    camPos[0] = 0.0; camPos[1] = 0.0; camPos[2] = -3.0;camPos[3] = 1.0;
 
-    for(var i = 0;i<MVP.length; i++)
-    {
+    mat4.translate(camTrans, camTrans, camPos);
+    mat4.multiply(cam, camTrans, rotationMatrix);
+    mat4.multiply(cam, persp, cam);
+
+    var identity = mat4.create();
+
+    //2D mode
+   // cam = mat4.create();
+
+    //render obj
+    if (usingOBJ) {
+
         this.programs.obstacle.use()
-        .attrib('sphere', this.obstacleBuffer.spherePos, 3)
-        .attrib('normal', this.obstacleBuffer.sphereNorm, 3)
-        .matrix('MVP', MVP[i])
-        .draw(gl.TRIANGLES, sphereVBO.length / 3);
+        .attrib('sphere', this.obstacleBuffer.meshPos, 3)
+        .attrib('normal', this.obstacleBuffer.meshNorm, 3)
+        .matrix('MVP', identity)
+        .matrix('camera', cam)
+        .draw(gl.TRIANGLES, meshOBJ.length / 3);
+    }
+
+    // render spheres
+    else {
+        for (var i = 0; i < MVP.length; i++) {
+            this.programs.obstacle.use()
+            .attrib('sphere', this.obstacleBuffer.spherePos, 3)
+            .attrib('normal', this.obstacleBuffer.sphereNorm, 3)
+            .matrix('MVP', MVP[i])
+            .matrix('camera', cam)
+            .draw(gl.TRIANGLES, sphereVBO.length / 3);
+        }
     }
 
     this.programs.copy.use()
@@ -230,7 +337,8 @@ ParticleSim.prototype.draw = function () {
         .uniformi('state', 0)
         .uniform('scale', this.resolution)
         .uniform('startCol', startColor)
-        .uniform('endCol',endColor)
+        .uniform('endCol', endColor)
+        .matrix('camera', cam)
         .draw(gl.POINTS, NUM_PARTICLES);
 
 
@@ -339,21 +447,27 @@ ParticleSim.prototype.drawSphere = function () {
 */
 
 //start simulation
-var simProg = null;
+var simProg = null, controller = null;
 var stats = new Stats();
 var simController;
+var mesh;
 
 var simControl = function () {
     this.startCol = [255, 0, 0, 1];
     this.endCol = [0, 0, 255, 1];
     this.radius = 0.1;
     this.numParticles = 200;
+    this.objCollision = true;
 
 };
+
+
+
 $(document).ready(function () {
     var $canvas = $('#particleSim');
 
     simController = new simControl();
+
     var gui = new dat.GUI();
 
     gui.add(simController, 'radius').onChange(function () {
@@ -385,16 +499,163 @@ $(document).ready(function () {
         }
     });
 
+    gui.add(simController, 'objCollision').onChange(function () {
+        usingOBJ = simController.objCollision;
+        obstaclePos = [];
+        MVP = [];
+        simProg.initLevelsetTex();
+
+    });
+
     InitSphere();
+
+    //mesh
+    var meshScale = 0.2;
+    if (usingOBJ) {
+        var objStr = document.getElementById('mesh.obj').innerHTML;
+        mesh = new OBJ.Mesh(objStr);
+
+
+        for (var i = 0; i < mesh.vertices.length / 3.0; i++) {
+            var newPos = vec4.create();
+            newPos[0] = mesh.vertices[3 * i + 0] * meshScale;
+            newPos[1] = mesh.vertices[3 * i + 1] * meshScale;
+            newPos[2] = mesh.vertices[3 * i + 2] * meshScale;
+            newPos[3] = 1.0;
+
+            minX = Math.min(minX, newPos[0]);
+            minY = Math.min(minY, newPos[1]);
+            minZ = Math.min(minZ, newPos[2]);
+
+            maxX = Math.max(maxX, newPos[0]);
+            maxY = Math.max(maxY, newPos[1]);
+            maxZ = Math.max(maxZ, newPos[2]);
+
+            AddObstacle(newPos);
+            obstaclePos.push(newPos);
+
+        }
+
+        for (var i = 0; i < mesh.indices.length; i++) {
+            var index = mesh.indices[i];
+            var pos = vec3.create();
+            pos[0] = mesh.vertices[index * 3] * meshScale;
+            pos[1] = mesh.vertices[index * 3 + 1] * meshScale;
+            pos[2] = mesh.vertices[index * 3 + 2] * meshScale;
+
+            var nor = vec3.create();
+            nor[0] = mesh.vertexNormals[index * 3];
+            nor[1] = mesh.vertexNormals[index * 3 + 1];
+            nor[2] = mesh.vertexNormals[index * 3 + 2];
+
+            meshOBJ.push(pos[0]);
+            meshOBJ.push(pos[1]);
+            meshOBJ.push(pos[2]);
+
+            meshOBJnormal.push(nor[0]);
+            meshOBJnormal.push(nor[1]);
+            meshOBJnormal.push(nor[2]);
+
+
+        }
+
+
+
+    }
+
     simProg = new ParticleSim($canvas[0]).draw().begin();
+    controller = new Controller(simProg);
     //FPS tracker
     stats.setMode(1);
     document.body.appendChild(stats.domElement);
+   
+
+    simProg.initObstacleTex();
+    simProg.initLevelsetTex();
+    
 });
 
-window.onload = function () {
+/**
+* Manages the user interface for a simulation.
+*/
+var prevMousePos = [];
+function Controller(parSim) {
+    this.parSim = parSim;
+    var _this = this,
+    $canvas = $(parSim.igloo.canvas);
+    this.drag = null;
+    $canvas.on('mousedown', function (event) {
 
-    
+        _this.drag = event.which;
+        var pos = parSim.eventCoord(event);
 
+        if(event.button == 2)
+            parSim.click(pos[0], pos[1], _this.drag == 1);
+        if (event.button == 0 && _this.drag != null)
+        {
+            prevMousePos[0] = pos[0];
+            prevMousePos[1] = pos[1];
+        }
+        
+       // parSim.draw();
+    });
+    $canvas.on('mouseup', function (event) {
+        _this.drag = null;
+    });
+    $canvas.on('mousemove', function (event) {
+        if (_this.drag) {
+            var pos = parSim.eventCoord(event);
+            //parSim.click(pos[0], pos[1], _this.drag == 1);
+            parSim.drag((pos[0] - prevMousePos[0])/5.0, pos[1] - prevMousePos[1], _this.drag == 1);
+         
+        }
+        //parSim.draw();
+    });
+    $canvas.on('contextmenu', function (event) {
+        event.preventDefault();
+        return false;
+    });
+    $(document).on('keyup', function (event) {
+        switch (event.which) {
+            case 82: /* r */
+                obstaclePos = [];
+                MVP = [];
+                parSim.initLevelsetTex();
+                parSim.initObstacleTex();
+         
+                break;
+      
+        };
+    });
+}
 
+ParticleSim.prototype.click = function (x, y, state) {
+    //console.log(x + " " + y);
+
+    var newPos = vec4.create();
+    newPos = [(x-0.5)*2.0, (y-0.5)*2.0, 0.0, 1.0];
+
+    AddObstacle(newPos);
+    obstaclePos.push(newPos);
+    this.initLevelsetTex();
+    this.initObstacleTex();
+    //console.log(obstaclePos);
+    return this;
 };
+
+ParticleSim.prototype.drag = function (diffx, diffy, state) {
+    mat4.rotate(rotationMatrix, rotationMatrix, diffx, upVector);
+
+    //console.log(rotationMatrix);
+    return this;
+};
+
+ParticleSim.prototype.eventCoord = function (event) {
+    var $target = $(event.target),
+    offset = $target.offset(),
+    border = 1,
+    x = event.pageX - offset.left - border,
+    y = $target.height() - (event.pageY - offset.top - border);
+    return [Math.floor(x) / DIM, Math.floor(y) / DIM];
+};
+
