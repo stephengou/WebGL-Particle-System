@@ -1,7 +1,7 @@
-#WebGL Particle Simulation System
+# WebGL Particle Simulation System
 By Zhen Gou, Zhenghan Mei
 
-##Overview
+## Overview
 This is a particle system developed using WebGL which has the following major features: simulation in fragment shader, collision handling with obstacles, user editable obstacles, deferred shading, velocity based motion blur.
 
 [Demo] (https://gouzhen1.github.io/WebGL-Particle-System)
@@ -10,12 +10,12 @@ if your browser cannot run it, here is a video demo
 
 [video](http://www.youtube.com/watch?v=0AAPv1RNVgg&feature=youtu.be)
 
-##Implementation Explanation
+## Implementation Explanation
 
-###Framework
+### Framework
 We built our own framework using Igloo as the wrapper API for WebGL.
 
-###Workflow
+### Workflow
 There are 2 passes for each frame. 
 
 * 1. Simulation Pass
@@ -69,7 +69,7 @@ The following diagram illustrates how collision is handled
 
 ![] 
 
-   Numerical Precision problem: since we store states in a texture, where each channel is 8-bits (there’s floating point channel available, but lot of machine doesn’t support it), so for position and velocity, each component, x,y,z can only have 256 different values. This lack of precision creates big problem especially obvious in collision handling. For example, for particles that come straight from above the middle of the sphere will bounce up and down forever, illustrated by the following image, because the repelled velocity has direction that is extremely close to the normal of the surface and this difference cannot be differentiated given this poor numerical precision.
+   Numerical Precision problem: since we store states in a texture, where each channel is 8-bits (thereâ€™s floating point channel available, but lot of machine doesnâ€™t support it), so for position and velocity, each component, x,y,z can only have 256 different values. This lack of precision creates big problem especially obvious in collision handling. For example, for particles that come straight from above the middle of the sphere will bounce up and down forever, illustrated by the following image, because the repelled velocity has direction that is extremely close to the normal of the surface and this difference cannot be differentiated given this poor numerical precision.
 ![](bug1.jpg)
 
 To solve this problem, we added noise to the repelled velocity and the resulting simulation looks much more natural.
